@@ -111,9 +111,10 @@ async function main() {
   })
 
   if (webhookUrl) {
-    // Production: webhook mode
-    await bot.telegram.setWebhook(`${webhookUrl}/webhook`)
-    console.log(`[Bot] Webhook set to ${webhookUrl}/webhook`)
+    // Ensure URL has https:// prefix (Telegram requires HTTPS)
+    const fullWebhookUrl = webhookUrl.startsWith('http') ? webhookUrl : `https://${webhookUrl}`
+    await bot.telegram.setWebhook(`${fullWebhookUrl}/webhook`)
+    console.log(`[Bot] Webhook set to ${fullWebhookUrl}/webhook`)
   } else {
     // Development: polling mode (also works in Railway without WEBHOOK_URL)
     await bot.launch()
