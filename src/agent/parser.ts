@@ -17,18 +17,17 @@ Use type "deposit" for requests to add funds, top up, buy crypto, etc.
 
 Return ONLY valid JSON. No explanation, no markdown.`
 
-const CHAT_SYSTEM_PROMPT = `You are RemitAgent, a friendly AI assistant for cross-border money transfers using USDt on TRON.
-You help people send money internationally — fast, cheap, and without a bank.
+const CHAT_SYSTEM_PROMPT = `You are RemitAgent, a friendly and knowledgeable AI assistant. You can answer any question — general knowledge, tech, finance, life advice, whatever the user needs.
 
-Key facts:
-- Fees: <0.5% (vs 8.5% Western Union)
-- Speed: under 60 seconds
-- No bank account needed
-- Powered by Tether WDK on TRON blockchain
+You also happen to be a cross-border money transfer agent: you can send USDt internationally in seconds for under 0.5% fee, powered by Tether WDK on TRON. No bank needed.
 
-When someone greets you or asks a general question, respond naturally and helpfully.
-Always gently steer toward what you can do: send money internationally.
-Be warm, concise, conversational. Max 2-3 sentences. No markdown — this is a chat.`
+Rules:
+- Answer the user's actual question first, naturally and helpfully
+- Only mention remittances if it's relevant or the conversation naturally leads there
+- Be warm, human, conversational — like texting a smart friend
+- Keep replies concise (2-4 sentences max unless a longer answer is clearly needed)
+- No markdown, no bullet points — this is a Telegram chat
+- Never say "I can only help with money transfers" — you can help with anything`
 
 export interface ParsedIntent {
   type: 'send' | 'balance' | 'history' | 'help' | 'deposit' | 'chat' | 'unknown'
@@ -116,20 +115,15 @@ function keywordFallback(text: string): ParsedIntent {
   return { type: 'chat', rawText: text }
 }
 
-// Canned chat responses when Gemini is unavailable
-const CANNED_REPLIES: Record<string, string> = {
-  greeting: "Hey! I'm RemitAgent 👋 I send money anywhere in the world — fast, cheap, no bank needed.\n\nTry: Send $50 to Maria in Mexico\nOr type /help to see all commands.",
-  balance: "To check your balance, just type /balance or say 'check my balance'.",
-  send: "Sure! Just tell me who to send to and how much.\n\nExample: Send $100 to João in Brazil",
-  default: "I'm here to help you send money internationally! Fees under 0.5%, arrives in under 60 seconds.\n\nTry: Send $50 to someone\nOr type /help for all commands.",
-}
-
 function getCannedReply(message: string): string {
   const t = message.toLowerCase()
-  if (/hi|hey|hello|good (morning|afternoon|evening)|howdy/.test(t)) return CANNED_REPLIES.greeting
-  if (/balance|how much|wallet/.test(t)) return CANNED_REPLIES.balance
-  if (/send|transfer|help/.test(t)) return CANNED_REPLIES.send
-  return CANNED_REPLIES.default
+  if (/hi|hey|hello|good (morning|afternoon|evening)|howdy/.test(t))
+    return "Hey! Good to hear from you. What can I help you with?"
+  if (/how are you|how r you|you good/.test(t))
+    return "Doing great, thanks for asking! What's on your mind?"
+  if (/what (are|can) you do|what is this|who are you/.test(t))
+    return "I'm RemitAgent — I can chat about pretty much anything, and I can also send money internationally for you in seconds. What do you need?"
+  return "I'm here! What's up?"
 }
 
 let geminiClient: GoogleGenerativeAI | null = null
