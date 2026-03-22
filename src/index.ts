@@ -16,7 +16,19 @@ import { handleSendFlow, handleActiveConversation } from './bot/handlers/send.js
 import { parseIntent } from './agent/parser.js'
 import { getState } from './agent/fsm.js'
 
+function checkRequiredEnv() {
+  const required = ['TELEGRAM_BOT_TOKEN', 'MASTER_SEED_PHRASE', 'DATABASE_URL']
+  const missing = required.filter((k) => !process.env[k])
+  if (missing.length) {
+    console.error('[Fatal] Missing required environment variables:', missing.join(', '))
+    console.error('Set them in Railway dashboard → Variables tab, then redeploy.')
+    process.exit(1)
+  }
+}
+
 async function main() {
+  checkRequiredEnv()
+
   // ── Connect infrastructure ──────────────────────────────────────────────
   await connectRedis()
   await connectPostgres()
