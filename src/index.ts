@@ -22,7 +22,7 @@ async function main() {
   await connectPostgres()
 
   // Warm up WDK singleton (validates seed phrase at startup)
-  getWDK()
+  await getWDK()
   console.log('[WDK] Initialized')
 
   // ── Set up Telegram bot ─────────────────────────────────────────────────

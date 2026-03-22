@@ -8,17 +8,15 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "mcp": "tsx src/mcp/server.ts",
     "db:migrate": "tsx src/db/migrate.ts",
     "test": "node --experimental-vm-modules node_modules/.bin/jest"
   },
   "dependencies": {
     "@tetherto/wdk": "latest",
-    "@tetherto/wdk-wallet-evm-erc4337": "latest",
     "@tetherto/wdk-wallet-tron-gasfree": "latest",
+    "@tetherto/wdk-wallet-evm-erc-4337": "latest",
     "@tetherto/wdk-wallet-evm": "latest",
     "@tetherto/wdk-protocol-fiat-moonpay": "latest",
-    "@tetherto/wdk-mcp-toolkit": "latest",
     "telegraf": "^4.16.3",
     "@google/generative-ai": "^0.15.0",
     "express": "^4.19.2",

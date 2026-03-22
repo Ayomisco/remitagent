@@ -21,8 +21,8 @@ export async function getFiatOnrampUrl(
 
   // Use WDK fiat-moonpay protocol if available, else fall back to direct URL
   try {
-    const wdk = getWDK()
-    const protocol = wdk.getProtocol('arbitrum', 'fiat-moonpay')
+    const wdk = await getWDK()
+    const protocol = wdk.getProtocol('tron', 'fiat-moonpay')
     const quote = await protocol.getQuote({ fiatAmount, fiatCurrency, walletAddress: address })
     return {
       url: quote.url,

@@ -11,7 +11,7 @@ function getUserWalletIndex(telegramUserId: string): number {
 }
 
 export async function getUserWallet(telegramUserId: string, chain: Chain = 'tron') {
-  const wdk = getWDK()
+  const wdk = await getWDK()
   const accountIndex = getUserWalletIndex(telegramUserId)
   const account = await wdk.getAccount(chain, accountIndex)
   const address = await account.getAddress()
