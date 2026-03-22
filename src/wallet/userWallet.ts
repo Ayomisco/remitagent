@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import type WDK from '@tetherto/wdk'
 import { getWDK } from './wdk.js'
 import { db } from '../db/postgres.js'
 
@@ -10,7 +11,10 @@ function getUserWalletIndex(telegramUserId: string): number {
   return parseInt(hash.slice(0, 8), 16) % 1_000_000
 }
 
-export async function getUserWallet(telegramUserId: string, chain: Chain = 'tron') {
+export async function getUserWallet(
+  telegramUserId: string,
+  chain: Chain = 'tron',
+): Promise<{ account: Awaited<ReturnType<WDK['getAccount']>>; address: string; accountIndex: number }> {
   const wdk = await getWDK()
   const accountIndex = getUserWalletIndex(telegramUserId)
   const account = await wdk.getAccount(chain, accountIndex)

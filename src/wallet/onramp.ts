@@ -1,4 +1,3 @@
-import { getWDK } from './wdk.js'
 import { getUserWallet } from './userWallet.js'
 
 export interface OnrampQuote {
@@ -19,32 +18,34 @@ export async function getFiatOnrampUrl(
 ): Promise<OnrampQuote> {
   const { address } = await getUserWallet(telegramUserId, 'tron')
 
-  // Use WDK fiat-moonpay protocol if available, else fall back to direct URL
-  try {
-    const wdk = await getWDK()
-    const protocol = wdk.getProtocol('tron', 'fiat-moonpay')
-    const quote = await protocol.getQuote({ fiatAmount, fiatCurrency, walletAddress: address })
-    return {
-      url: quote.url,
-      estimatedUsdt: quote.cryptoAmount,
-      fee: quote.feeAmount,
-      provider: 'moonpay',
+  const baseUrl = 'https://buy.moonpay.com'
+  const params = new URLSearchParams({
+    apiKey: process.env.MOONPAY_API_KEY ?? '',
+    currencyCode: 'usdt_trc20',
+    walletAddress: address,
+    baseCurrencyAmount: String(fiatAmount),
+    baseCurrencyCode: fiatCurrency.toLowerCase(),
+  })
+
+  // Sign the URL if MoonPay secret key is available
+  let url = `${baseUrl}?${params}`
+  if (process.env.MOONPAY_SECRET_KEY) {
+    try {
+      const { createHmac } = await import('crypto')
+      const signature = createHmac('sha256', process.env.MOONPAY_SECRET_KEY)
+        .update(new URL(url).search)
+        .digest('base64')
+      params.set('signature', signature)
+      url = `${baseUrl}?${params}`
+    } catch {
+      // signature optional, skip on failure
     }
-  } catch {
-    // Fallback: construct MoonPay URL directly
-    const baseUrl = 'https://buy.moonpay.com'
-    const params = new URLSearchParams({
-      apiKey: process.env.MOONPAY_API_KEY ?? '',
-      currencyCode: 'usdt_trc20',
-      walletAddress: address,
-      baseCurrencyAmount: String(fiatAmount),
-      baseCurrencyCode: fiatCurrency.toLowerCase(),
-    })
-    return {
-      url: `${baseUrl}?${params}`,
-      estimatedUsdt: fiatAmount * 0.975, // ~2.5% MoonPay fee estimate
-      fee: fiatAmount * 0.025,
-      provider: 'moonpay',
-    }
+  }
+
+  return {
+    url,
+    estimatedUsdt: fiatAmount * 0.975, // ~2.5% MoonPay fee estimate
+    fee: fiatAmount * 0.025,
+    provider: 'moonpay',
   }
 }
