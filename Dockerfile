@@ -1,23 +1,33 @@
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install
+# Build tools needed for native modules (sodium-native, etc.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json* ./
+RUN npm ci
 
 COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
 # ── Production image ───────────────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY package.json ./
-RUN npm install --omit=dev
+# Build tools needed for native modules in production install
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 
