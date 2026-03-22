@@ -10,21 +10,10 @@ Always return valid JSON with exactly these fields:
 - recipient: phone number, wallet address, or name — null if not present
 - recipientCountry: country name or ISO code if mentioned — null otherwise
 
-Use type "chat" for greetings, casual conversation, questions about the bot, or anything that isn't a financial action.
+Use type "chat" for greetings, casual conversation, questions about the bot, or anything not financial.
 Use type "send" for any money transfer intent.
+Use type "balance" for any question about wallet balance or funds.
 Use type "deposit" for requests to add funds, top up, buy crypto, etc.
-
-Examples:
-"Send $200 to João in Brazil" → {"type":"send","amount":200,"fromCurrency":"USD","recipient":"João","recipientCountry":"Brazil","toCurrency":"BRL"}
-"Transfer £300 to my mum in Lagos" → {"type":"send","amount":300,"fromCurrency":"GBP","recipient":"mum","recipientCountry":"Nigeria","toCurrency":"NGN"}
-"Send 50 USDT to TRX1abc...xyz" → {"type":"send","amount":50,"fromCurrency":"USDT","recipient":"TRX1abc...xyz","recipientCountry":null,"toCurrency":null}
-"What's my balance?" → {"type":"balance","amount":null,"fromCurrency":null,"toCurrency":null,"recipient":null,"recipientCountry":null}
-"Show my transfer history" → {"type":"history","amount":null,"fromCurrency":null,"toCurrency":null,"recipient":null,"recipientCountry":null}
-"hey" → {"type":"chat","amount":null,"fromCurrency":null,"toCurrency":null,"recipient":null,"recipientCountry":null}
-"how are you?" → {"type":"chat","amount":null,"fromCurrency":null,"toCurrency":null,"recipient":null,"recipientCountry":null}
-"what is web3?" → {"type":"chat","amount":null,"fromCurrency":null,"toCurrency":null,"recipient":null,"recipientCountry":null}
-"how does this work?" → {"type":"chat","amount":null,"fromCurrency":null,"toCurrency":null,"recipient":null,"recipientCountry":null}
-"add funds" → {"type":"deposit","amount":null,"fromCurrency":null,"toCurrency":null,"recipient":null,"recipientCountry":null}
 
 Return ONLY valid JSON. No explanation, no markdown.`
 
@@ -38,9 +27,8 @@ Key facts:
 - Powered by Tether WDK on TRON blockchain
 
 When someone greets you or asks a general question, respond naturally and helpfully.
-Always gently steer the conversation toward what you can actually do: send money.
-Be warm, concise, and conversational. Max 3 sentences.
-Don't use markdown — this is a chat interface.`
+Always gently steer toward what you can do: send money internationally.
+Be warm, concise, conversational. Max 2-3 sentences. No markdown — this is a chat.`
 
 export interface ParsedIntent {
   type: 'send' | 'balance' | 'history' | 'help' | 'deposit' | 'chat' | 'unknown'
@@ -52,44 +40,97 @@ export interface ParsedIntent {
   rawText: string
 }
 
-// Fast regex paths — no LLM cost for the most common patterns
+// Broad regex patterns — catch natural language variations without hitting the LLM
 const REGEX_PATTERNS: Array<{
   re: RegExp
   handler: (m: RegExpMatchArray) => Partial<ParsedIntent>
 }> = [
+  // Send: "send $200 to Maria", "send 50 usdt to T123..."
   {
-    re: /^send\s+\$?(\d+(?:\.\d+)?)\s+(?:usdt?\s+)?to\s+(.+)/i,
+    re: /\bsend\s+\$?(\d+(?:\.\d+)?)\s*(?:usdt?|usd)?\s+(?:to\s+)?(.+)/i,
     handler: (m) => ({ type: 'send', amount: parseFloat(m[1]), fromCurrency: 'USD', recipient: m[2].trim() }),
   },
+  // Transfer with currency symbols: £300, €200
   {
-    re: /^transfer\s+£(\d+(?:\.\d+)?)\s+to\s+(.+)/i,
+    re: /\btransfer\s+£(\d+(?:\.\d+)?)\s+to\s+(.+)/i,
     handler: (m) => ({ type: 'send', amount: parseFloat(m[1]), fromCurrency: 'GBP', recipient: m[2].trim() }),
   },
   {
-    re: /^transfer\s+€(\d+(?:\.\d+)?)\s+to\s+(.+)/i,
+    re: /\btransfer\s+€(\d+(?:\.\d+)?)\s+to\s+(.+)/i,
     handler: (m) => ({ type: 'send', amount: parseFloat(m[1]), fromCurrency: 'EUR', recipient: m[2].trim() }),
   },
+  // Generic transfer: "transfer $50 to..."
   {
-    re: /^(balance|wallet|how much do i have)/i,
+    re: /\btransfer\s+\$?(\d+(?:\.\d+)?)\s+(?:usdt?|usd)?\s*(?:to\s+)?(.+)/i,
+    handler: (m) => ({ type: 'send', amount: parseFloat(m[1]), fromCurrency: 'USD', recipient: m[2].trim() }),
+  },
+  // Balance: "what's my balance", "how much do i have", "check my wallet", etc.
+  {
+    re: /\b(balance|how much|my wallet|my funds|my usdt|check wallet|wallet balance|what.?s in|how many|do i have)\b/i,
     handler: () => ({ type: 'balance' }),
   },
+  // History: "show history", "past transfers", etc.
   {
-    re: /^(history|transactions?|transfers?|past payments?)/i,
+    re: /\b(history|transactions?|past (transfers?|payments?)|recent|show (my )?transfers?)\b/i,
     handler: () => ({ type: 'history' }),
   },
+  // Deposit: "add funds", "top up", "buy usdt", "deposit"
   {
-    re: /^(help|\?|what can you do|commands)/i,
-    handler: () => ({ type: 'help' }),
-  },
-  {
-    re: /^(hi|hey|hello|howdy|sup|yo|hiya|good (morning|afternoon|evening)|what'?s up)/i,
-    handler: () => ({ type: 'chat' }),
-  },
-  {
-    re: /^(deposit|add funds?|top up|buy usdt?|fund)/i,
+    re: /\b(deposit|add funds?|top.?up|buy usdt?|fund|add money|load)\b/i,
     handler: () => ({ type: 'deposit' }),
   },
+  // Help: "/help", "what can you do", "commands", "help me"
+  {
+    re: /^\/?(help|commands?|what can you do|how do (i|you)|show me)\b/i,
+    handler: () => ({ type: 'help' }),
+  },
+  // Send intent without amount: "can you help send money", "i want to send"
+  {
+    re: /\b(can you|i want to|i need to|help me|i.?d like to)\s+(send|transfer|remit|pay)\b/i,
+    handler: () => ({ type: 'help' }),
+  },
+  // Greetings
+  {
+    re: /^(hi+|hey+|hello+|howdy|sup|yo+|hiya|good (morning|afternoon|evening|day)|what.?s up|greetings|howzit)/i,
+    handler: () => ({ type: 'chat' }),
+  },
+  // "are you there", "are you active", "are you working"
+  {
+    re: /^are you\b/i,
+    handler: () => ({ type: 'chat' }),
+  },
+  // "what are you doing", "what's your doing"
+  {
+    re: /^what.?s? (are you|your)\b/i,
+    handler: () => ({ type: 'chat' }),
+  },
 ]
+
+// Keyword-based fallback when Gemini is unavailable
+function keywordFallback(text: string): ParsedIntent {
+  const t = text.toLowerCase()
+  if (/balance|how much|wallet|funds/.test(t)) return { type: 'balance', rawText: text }
+  if (/history|transactions?|transfers?/.test(t)) return { type: 'history', rawText: text }
+  if (/send|transfer|remit|pay/.test(t)) return { type: 'help', rawText: text }
+  if (/deposit|top.?up|add funds|buy usdt?/.test(t)) return { type: 'deposit', rawText: text }
+  return { type: 'chat', rawText: text }
+}
+
+// Canned chat responses when Gemini is unavailable
+const CANNED_REPLIES: Record<string, string> = {
+  greeting: "Hey! I'm RemitAgent 👋 I send money anywhere in the world — fast, cheap, no bank needed.\n\nTry: Send $50 to Maria in Mexico\nOr type /help to see all commands.",
+  balance: "To check your balance, just type /balance or say 'check my balance'.",
+  send: "Sure! Just tell me who to send to and how much.\n\nExample: Send $100 to João in Brazil",
+  default: "I'm here to help you send money internationally! Fees under 0.5%, arrives in under 60 seconds.\n\nTry: Send $50 to someone\nOr type /help for all commands.",
+}
+
+function getCannedReply(message: string): string {
+  const t = message.toLowerCase()
+  if (/hi|hey|hello|good (morning|afternoon|evening)|howdy/.test(t)) return CANNED_REPLIES.greeting
+  if (/balance|how much|wallet/.test(t)) return CANNED_REPLIES.balance
+  if (/send|transfer|help/.test(t)) return CANNED_REPLIES.send
+  return CANNED_REPLIES.default
+}
 
 let geminiClient: GoogleGenerativeAI | null = null
 
@@ -105,44 +146,47 @@ function getGemini(): GoogleGenerativeAI {
 export async function parseIntent(message: string): Promise<ParsedIntent> {
   const text = message.trim()
 
-  // Try fast regex first — zero API cost
+  // Try regex first — zero API cost, handles most real-world inputs
   for (const { re, handler } of REGEX_PATTERNS) {
     const m = text.match(re)
     if (m) return { ...handler(m), rawText: text } as ParsedIntent
   }
 
-  // Gemini fallback for complex / ambiguous messages
-  try {
-    const model = getGemini().getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      generationConfig: {
-        responseMimeType: 'application/json',
-        temperature: 0,
-        maxOutputTokens: 256,
-      },
-    })
-
-    const result = await model.generateContent(`${SYSTEM_PROMPT}\n\nUser message: "${text}"`)
-    const json = result.response.text()
-    const parsed = JSON.parse(json)
-    return { ...parsed, rawText: text }
-  } catch (err) {
-    console.error('[Parser] Gemini error:', err)
-    return { type: 'unknown', rawText: text }
+  // Gemini fallback for complex / truly ambiguous messages
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const model = getGemini().getGenerativeModel({
+        model: 'gemini-1.5-flash',
+        generationConfig: { responseMimeType: 'application/json', temperature: 0, maxOutputTokens: 256 },
+      })
+      const result = await model.generateContent(`${SYSTEM_PROMPT}\n\nUser message: "${text}"`)
+      const parsed = JSON.parse(result.response.text())
+      return { ...parsed, rawText: text }
+    } catch (err) {
+      console.error('[Parser] Gemini parseIntent error:', err)
+    }
   }
+
+  // Keyword-based fallback if Gemini unavailable
+  return keywordFallback(text)
 }
 
 export async function generateChatReply(message: string): Promise<string> {
-  try {
-    const model = getGemini().getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      generationConfig: { temperature: 0.7, maxOutputTokens: 150 },
-    })
-    const result = await model.generateContent(
-      `${CHAT_SYSTEM_PROMPT}\n\nUser: "${message}"\nRemitAgent:`,
-    )
-    return result.response.text().trim()
-  } catch {
-    return "Hey! I'm RemitAgent — I help you send money internationally for less than 0.5% fee. Try: Send $100 to someone"
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const model = getGemini().getGenerativeModel({
+        model: 'gemini-1.5-flash',
+        generationConfig: { temperature: 0.7, maxOutputTokens: 150 },
+      })
+      const result = await model.generateContent(
+        `${CHAT_SYSTEM_PROMPT}\n\nUser: "${message}"\nRemitAgent:`,
+      )
+      return result.response.text().trim()
+    } catch (err) {
+      console.error('[Parser] Gemini chat error:', err)
+    }
   }
+
+  // Canned fallback so bot always responds sensibly
+  return getCannedReply(message)
 }
