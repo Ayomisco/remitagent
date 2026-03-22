@@ -13,7 +13,7 @@ import { handleHistory } from './bot/handlers/history.js'
 import { handleHelp } from './bot/handlers/help.js'
 import { handleDeposit } from './bot/handlers/deposit.js'
 import { handleSendFlow, handleActiveConversation } from './bot/handlers/send.js'
-import { parseIntent } from './agent/parser.js'
+import { parseIntent, generateChatReply } from './agent/parser.js'
 import { getState } from './agent/fsm.js'
 
 function checkRequiredEnv() {
@@ -86,11 +86,16 @@ async function main() {
       case 'help':
         await handleHelp(ctx)
         break
-      default:
-        await ctx.reply(
-          "I didn't understand that. Try:\n`Send $100 to someone`\n\nOr type /help for all commands.",
-          { parse_mode: 'Markdown' },
-        )
+      case 'deposit':
+        await handleDeposit(ctx)
+        break
+      case 'chat':
+      case 'unknown':
+      default: {
+        const reply = await generateChatReply(message)
+        await ctx.reply(reply)
+        break
+      }
     }
   })
 

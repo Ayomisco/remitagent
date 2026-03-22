@@ -3,12 +3,16 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 const SYSTEM_PROMPT = `You are a remittance parsing assistant.
 Extract structured data from user messages about sending money.
 Always return valid JSON with exactly these fields:
-- type: "send" | "balance" | "history" | "help" | "save_recipient" | "unknown"
+- type: "send" | "balance" | "history" | "help" | "deposit" | "chat" | "unknown"
 - amount: number (in fromCurrency) — null if not present
 - fromCurrency: ISO currency code (USD, GBP, EUR, NGN, etc.) — default "USD" for send
 - toCurrency: target currency if mentioned — null otherwise
 - recipient: phone number, wallet address, or name — null if not present
 - recipientCountry: country name or ISO code if mentioned — null otherwise
+
+Use type "chat" for greetings, casual conversation, questions about the bot, or anything that isn't a financial action.
+Use type "send" for any money transfer intent.
+Use type "deposit" for requests to add funds, top up, buy crypto, etc.
 
 Examples:
 "Send $200 to João in Brazil" → {"type":"send","amount":200,"fromCurrency":"USD","recipient":"João","recipientCountry":"Brazil","toCurrency":"BRL"}
@@ -16,12 +20,30 @@ Examples:
 "Send 50 USDT to TRX1abc...xyz" → {"type":"send","amount":50,"fromCurrency":"USDT","recipient":"TRX1abc...xyz","recipientCountry":null,"toCurrency":null}
 "What's my balance?" → {"type":"balance","amount":null,"fromCurrency":null,"toCurrency":null,"recipient":null,"recipientCountry":null}
 "Show my transfer history" → {"type":"history","amount":null,"fromCurrency":null,"toCurrency":null,"recipient":null,"recipientCountry":null}
-"Save Maria as my Mexico contact" → {"type":"save_recipient","amount":null,"fromCurrency":null,"toCurrency":null,"recipient":"Maria","recipientCountry":"Mexico"}
+"hey" → {"type":"chat","amount":null,"fromCurrency":null,"toCurrency":null,"recipient":null,"recipientCountry":null}
+"how are you?" → {"type":"chat","amount":null,"fromCurrency":null,"toCurrency":null,"recipient":null,"recipientCountry":null}
+"what is web3?" → {"type":"chat","amount":null,"fromCurrency":null,"toCurrency":null,"recipient":null,"recipientCountry":null}
+"how does this work?" → {"type":"chat","amount":null,"fromCurrency":null,"toCurrency":null,"recipient":null,"recipientCountry":null}
+"add funds" → {"type":"deposit","amount":null,"fromCurrency":null,"toCurrency":null,"recipient":null,"recipientCountry":null}
 
 Return ONLY valid JSON. No explanation, no markdown.`
 
+const CHAT_SYSTEM_PROMPT = `You are RemitAgent, a friendly AI assistant for cross-border money transfers using USDt on TRON.
+You help people send money internationally — fast, cheap, and without a bank.
+
+Key facts:
+- Fees: <0.5% (vs 8.5% Western Union)
+- Speed: under 60 seconds
+- No bank account needed
+- Powered by Tether WDK on TRON blockchain
+
+When someone greets you or asks a general question, respond naturally and helpfully.
+Always gently steer the conversation toward what you can actually do: send money.
+Be warm, concise, and conversational. Max 3 sentences.
+Don't use markdown — this is a chat interface.`
+
 export interface ParsedIntent {
-  type: 'send' | 'balance' | 'history' | 'help' | 'save_recipient' | 'unknown'
+  type: 'send' | 'balance' | 'history' | 'help' | 'deposit' | 'chat' | 'unknown'
   amount?: number
   fromCurrency?: string
   toCurrency?: string
@@ -58,6 +80,14 @@ const REGEX_PATTERNS: Array<{
   {
     re: /^(help|\?|what can you do|commands)/i,
     handler: () => ({ type: 'help' }),
+  },
+  {
+    re: /^(hi|hey|hello|howdy|sup|yo|hiya|good (morning|afternoon|evening)|what'?s up)/i,
+    handler: () => ({ type: 'chat' }),
+  },
+  {
+    re: /^(deposit|add funds?|top up|buy usdt?|fund)/i,
+    handler: () => ({ type: 'deposit' }),
   },
 ]
 
@@ -99,5 +129,20 @@ export async function parseIntent(message: string): Promise<ParsedIntent> {
   } catch (err) {
     console.error('[Parser] Gemini error:', err)
     return { type: 'unknown', rawText: text }
+  }
+}
+
+export async function generateChatReply(message: string): Promise<string> {
+  try {
+    const model = getGemini().getGenerativeModel({
+      model: 'gemini-1.5-flash',
+      generationConfig: { temperature: 0.7, maxOutputTokens: 150 },
+    })
+    const result = await model.generateContent(
+      `${CHAT_SYSTEM_PROMPT}\n\nUser: "${message}"\nRemitAgent:`,
+    )
+    return result.response.text().trim()
+  } catch {
+    return "Hey! I'm RemitAgent — I help you send money internationally for less than 0.5% fee. Try: Send $100 to someone"
   }
 }
