@@ -104,21 +104,21 @@ async function main() {
   const webhookUrl = process.env.WEBHOOK_URL
   const port = parseInt(process.env.PORT ?? '3000', 10)
 
+  // Always start HTTP server so Railway healthcheck on /health passes
+  const server = createServer(bot)
+  server.listen(port, () => {
+    console.log(`[Server] RemitAgent running on port ${port}`)
+  })
+
   if (webhookUrl) {
-    // Production: webhook mode (required for Railway — long polling won't work)
+    // Production: webhook mode
     await bot.telegram.setWebhook(`${webhookUrl}/webhook`)
     console.log(`[Bot] Webhook set to ${webhookUrl}/webhook`)
-
-    const server = createServer(bot)
-    server.listen(port, () => {
-      console.log(`[Server] RemitAgent running on port ${port}`)
-    })
   } else {
-    // Development: polling mode
+    // Development: polling mode (also works in Railway without WEBHOOK_URL)
     await bot.launch()
     console.log('[Bot] RemitAgent started (polling mode)')
 
-    // Graceful shutdown
     process.once('SIGINT', () => bot.stop('SIGINT'))
     process.once('SIGTERM', () => bot.stop('SIGTERM'))
   }
