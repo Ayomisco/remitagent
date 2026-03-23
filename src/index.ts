@@ -14,6 +14,7 @@ import { handleHelp } from './bot/handlers/help.js'
 import { handleDeposit } from './bot/handlers/deposit.js'
 import { handleSendFlow, handleActiveConversation } from './bot/handlers/send.js'
 import { parseIntent, generateChatReply } from './agent/parser.js'
+import { getHistory, appendHistory } from './agent/memory.js'
 import { getState } from './agent/fsm.js'
 
 function checkRequiredEnv() {
@@ -92,8 +93,10 @@ async function main() {
       case 'chat':
       case 'unknown':
       default: {
-        const reply = await generateChatReply(message)
+        const history = await getHistory(userId)
+        const reply = await generateChatReply(message, history)
         await ctx.reply(reply)
+        await appendHistory(userId, message, reply)
         break
       }
     }

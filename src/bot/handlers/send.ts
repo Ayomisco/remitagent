@@ -5,6 +5,7 @@ import { executeTransfer } from '../../agent/executor.js'
 import { getState, setState, clearState, updateState } from '../../agent/fsm.js'
 import { resolveRecipient } from '../../recipients/resolver.js'
 import { saveRecipient, findRecipient } from '../../recipients/registry.js'
+import { appendHistory } from '../../agent/memory.js'
 import {
   transferSummaryMessage,
   transferCompleteMessage,
@@ -139,13 +140,19 @@ export async function handleActiveConversation(ctx: Context, message: string): P
 
       await clearState(userId)
 
-      await ctx.reply(
-        transferCompleteMessage({
-          usdtAmount: state.quote.usdtAmount,
-          txHash: result.txHash,
-          explorerUrl: result.explorerUrl,
-        }),
-        { parse_mode: 'Markdown' },
+      const completeMsg = transferCompleteMessage({
+        usdtAmount: state.quote.usdtAmount,
+        txHash: result.txHash,
+        explorerUrl: result.explorerUrl,
+      })
+      await ctx.reply(completeMsg, { parse_mode: 'Markdown' })
+
+      // Log transfer outcome to conversation memory so user can ask about it
+      const recipient = state.parsed.recipient ?? state.recipientAddress ?? 'recipient'
+      await appendHistory(
+        userId,
+        `[Transfer] Sent ${state.quote.usdtAmount} USDt to ${recipient} (${state.recipientAddress})`,
+        `Transfer complete. TX: ${result.txHash}. Explorer: ${result.explorerUrl}`,
       )
 
       // Agent autonomously saves new recipients for future use

@@ -17,17 +17,18 @@ Use type "deposit" for requests to add funds, top up, buy crypto, etc.
 
 Return ONLY valid JSON. No explanation, no markdown.`
 
-const CHAT_SYSTEM_PROMPT = `You are RemitAgent, a friendly and knowledgeable AI assistant. You can answer any question — general knowledge, tech, finance, life advice, whatever the user needs.
+const CHAT_SYSTEM_PROMPT = `You are RemitAgent — a smart, friendly AI assistant that users chat with on Telegram.
 
-You also happen to be a cross-border money transfer agent: you can send USDt internationally in seconds for under 0.5% fee, powered by Tether WDK on TRON. No bank needed.
+You are fully conversational. You can discuss anything: general knowledge, tech, crypto, finance, life advice, current events, jokes, whatever the user brings up. You have no topic restrictions.
 
-Rules:
-- Answer the user's actual question first, naturally and helpfully
-- Only mention remittances if it's relevant or the conversation naturally leads there
-- Be warm, human, conversational — like texting a smart friend
-- Keep replies concise (2-4 sentences max unless a longer answer is clearly needed)
-- No markdown, no bullet points — this is a Telegram chat
-- Never say "I can only help with money transfers" — you can help with anything`
+You also have a special skill: sending money internationally in seconds for under 0.5% fee using USDt on TRON (via Tether WDK). When the user asks about their transfers, wallet, balance, or how a transaction went — you know about all of that from the conversation history.
+
+Personality:
+- Warm, human, like texting a smart and helpful friend
+- Concise by default — 1-3 sentences unless more depth is needed
+- When the user asks something detailed, give a detailed answer
+- No markdown formatting (no **bold**, no bullet points) — this is Telegram chat
+- Never refuse to answer a question by saying you can only help with payments`
 
 export interface ParsedIntent {
   type: 'send' | 'balance' | 'history' | 'help' | 'deposit' | 'chat' | 'unknown'
@@ -165,22 +166,32 @@ export async function parseIntent(message: string): Promise<ParsedIntent> {
   return keywordFallback(text)
 }
 
-export async function generateChatReply(message: string): Promise<string> {
+export async function generateChatReply(
+  message: string,
+  history: Array<{ role: 'user' | 'assistant'; content: string }> = [],
+): Promise<string> {
   if (process.env.GEMINI_API_KEY) {
     try {
       const model = getGemini().getGenerativeModel({
         model: 'gemini-1.5-flash',
-        generationConfig: { temperature: 0.7, maxOutputTokens: 150 },
+        generationConfig: { temperature: 0.8, maxOutputTokens: 512 },
       })
-      const result = await model.generateContent(
-        `${CHAT_SYSTEM_PROMPT}\n\nUser: "${message}"\nRemitAgent:`,
-      )
+
+      // Build full conversation context
+      const historyText = history.length
+        ? history.map((m) => `${m.role === 'user' ? 'User' : 'RemitAgent'}: ${m.content}`).join('\n')
+        : ''
+
+      const prompt = historyText
+        ? `${CHAT_SYSTEM_PROMPT}\n\nConversation so far:\n${historyText}\n\nUser: ${message}\nRemitAgent:`
+        : `${CHAT_SYSTEM_PROMPT}\n\nUser: ${message}\nRemitAgent:`
+
+      const result = await model.generateContent(prompt)
       return result.response.text().trim()
     } catch (err) {
       console.error('[Parser] Gemini chat error:', err)
     }
   }
 
-  // Canned fallback so bot always responds sensibly
   return getCannedReply(message)
 }
