@@ -17,7 +17,7 @@
     "@tetherto/wdk-protocol-fiat-moonpay": "latest",
     "@tetherto/wdk-wallet-evm": "latest",
     "@tetherto/wdk-wallet-evm-erc-4337": "latest",
-    "@tetherto/wdk-wallet-tron-gasfree": "latest",
+    "@tetherto/wdk-wallet-tron": "latest",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
