@@ -12,29 +12,29 @@
     "test": "node --experimental-vm-modules node_modules/.bin/jest"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@tetherto/wdk": "latest",
-    "@tetherto/wdk-wallet-tron-gasfree": "latest",
-    "@tetherto/wdk-wallet-evm-erc-4337": "latest",
-    "@tetherto/wdk-wallet-evm": "latest",
     "@tetherto/wdk-protocol-fiat-moonpay": "latest",
-    "telegraf": "^4.16.3",
-    "@google/generative-ai": "^0.15.0",
-    "express": "^4.19.2",
-    "pg": "^8.12.0",
-    "ioredis": "^5.4.1",
+    "@tetherto/wdk-wallet-evm": "latest",
+    "@tetherto/wdk-wallet-evm-erc-4337": "latest",
+    "@tetherto/wdk-wallet-tron-gasfree": "latest",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "ioredis": "^5.4.1",
+    "pg": "^8.12.0",
+    "telegraf": "^4.16.3",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
-    "@types/pg": "^8.11.6",
     "@types/cors": "^2.8.17",
-    "@types/node": "^20.14.10",
-    "typescript": "^5.5.3",
-    "tsx": "^4.16.2",
-    "jest": "^29.7.0",
+    "@types/express": "^4.17.21",
     "@types/jest": "^29.5.12",
-    "ts-jest": "^29.2.2"
+    "@types/node": "^20.14.10",
+    "@types/pg": "^8.11.6",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.2",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
   }
 }

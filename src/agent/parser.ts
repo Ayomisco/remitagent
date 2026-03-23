@@ -165,7 +165,7 @@ export async function parseIntent(message: string): Promise<ParsedIntent> {
   if (process.env.GEMINI_API_KEY) {
     try {
       const model = getGemini().getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.0-flash',
         generationConfig: { responseMimeType: 'application/json', temperature: 0, maxOutputTokens: 256 },
       })
       const result = await model.generateContent(`${SYSTEM_PROMPT}\n\nUser message: "${text}"`)
@@ -187,7 +187,7 @@ export async function generateChatReply(
   if (process.env.GEMINI_API_KEY) {
     try {
       const model = getGemini().getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.0-flash',
         generationConfig: { temperature: 0.8, maxOutputTokens: 512 },
       })
 
