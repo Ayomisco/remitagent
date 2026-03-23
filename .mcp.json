@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "wdk-docs": {
+      "transport": "sse",
+      "url": "https://docs.wallet.tether.io/~gitbook/mcp"
+    }
+  }
+}
